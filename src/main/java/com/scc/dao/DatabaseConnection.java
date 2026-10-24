@@ -1,5 +1,5 @@
 
-package dao;
+package com.scc.dao;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -14,33 +14,18 @@ public class DatabaseConnection {
         try {
             Class.forName("org.sqlite.JDBC");
         } catch (ClassNotFoundException e) {
-            throw new SQLException(
-                    "SQLite JDBC driver not found. Reload Maven and check pom.xml.",
-                    e
-            );
+            throw new SQLException("SQLite JDBC driver not found.", e);
         }
 
-        return DriverManager.getConnection(URL);
-    }
+        Connection connection = DriverManager.getConnection(URL);
 
-    public static void initializeDatabase() throws SQLException {
-        String sql = """
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE,
-                password TEXT NOT NULL,
-                roles TEXT NOT NULL
-                    CHECK (roles IN ('TEACHER', 'STUDENT')),
-                status TEXT NOT NULL DEFAULT 'PENDING'
-            )
-            """;
-
-        try (Connection conn = getConnection();
-             Statement stmt = conn.createStatement()) {
-
-            stmt.execute(sql);
-            System.out.println("SQLite database connected successfully!");
-            System.out.println("Users table created successfully!");
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("PRAGMA foreign_keys = ON");
+        } catch (SQLException e) {
+            connection.close();
+            throw e;
         }
+
+        return connection;
     }
 }
