@@ -1,14 +1,21 @@
+
 package com.scc.model;
 
 public class User {
+
     private final int id;
     private final String username;
     private final String password;
     private final String roles;
     private final String status;
 
-    public User(int id, String username, String password,
-                String roles, String status) {
+    public User(
+            int id,
+            String username,
+            String password,
+            String roles,
+            String status
+    ) {
         this.id = id;
         this.username = username;
         this.password = password;

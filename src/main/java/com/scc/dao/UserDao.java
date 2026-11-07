@@ -1,3 +1,4 @@
+
 package com.scc.dao;
 
 import com.scc.model.User;
@@ -10,15 +11,22 @@ import java.sql.Types;
 
 public class UserDao {
 
-    // ==================== USER OPERATIONS ====================
+    // ==========================================
+    // USER OPERATIONS
+    // ==========================================
 
-    public boolean register(String username, String password, String role)
-            throws SQLException {
+    // REGISTER USER
+    public boolean register(
+            String username,
+            String password,
+            String role
+    ) throws SQLException {
 
         String sql = """
-            INSERT INTO users (username, password, roles, status)
-            VALUES (?, ?, ?, 'PENDING')
-            """;
+                INSERT INTO users
+                (username, password, roles, status)
+                VALUES (?, ?, ?, 'PENDING')
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -31,15 +39,19 @@ public class UserDao {
         }
     }
 
-    public User login(String username, String password)
-            throws SQLException {
+    // LOGIN USER
+    public User login(
+            String username,
+            String password
+    ) throws SQLException {
 
         String sql = """
-            SELECT id, username, password, roles, status
-            FROM users
-            WHERE username = ? AND password = ?
-            AND UPPER(status) = 'ACTIVE'
-            """;
+                SELECT id, username, password, roles, status
+                FROM users
+                WHERE username = ?
+                AND password = ?
+                AND UPPER(status) = 'ACTIVE'
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -48,6 +60,7 @@ public class UserDao {
             ps.setString(2, password);
 
             try (ResultSet rs = ps.executeQuery()) {
+
                 if (rs.next()) {
                     return new User(
                             rs.getInt("id"),
@@ -63,40 +76,50 @@ public class UserDao {
         return null;
     }
 
+    // VIEW ALL USERS
     public void viewUsers() throws SQLException {
+
         String sql = """
-            SELECT id, username, roles, status
-            FROM users
-            ORDER BY id
-            """;
+                SELECT id, username, roles, status
+                FROM users
+                ORDER BY id
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
             System.out.println("\n==================================================");
-            System.out.printf("%-8s %-20s %-18s %-12s%n",
-                    "ID", "USERNAME", "ROLE", "STATUS");
+            System.out.printf(
+                    "%-8s %-20s %-18s %-12s%n",
+                    "ID", "USERNAME", "ROLE", "STATUS"
+            );
             System.out.println("==================================================");
 
             while (rs.next()) {
-                System.out.printf("%-8d %-20s %-18s %-12s%n",
+
+                System.out.printf(
+                        "%-8d %-20s %-18s %-12s%n",
                         rs.getInt("id"),
                         rs.getString("username"),
                         rs.getString("roles"),
-                        rs.getString("status"));
+                        rs.getString("status")
+                );
             }
 
             System.out.println("==================================================");
         }
     }
 
-    public User getUserById(int userId) throws SQLException {
+    // GET USER BY ID
+    public User getUserById(int userId)
+            throws SQLException {
+
         String sql = """
-            SELECT id, username, password, roles, status
-            FROM users
-            WHERE id = ?
-            """;
+                SELECT id, username, password, roles, status
+                FROM users
+                WHERE id = ?
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -104,6 +127,7 @@ public class UserDao {
             ps.setInt(1, userId);
 
             try (ResultSet rs = ps.executeQuery()) {
+
                 if (rs.next()) {
                     return new User(
                             rs.getInt("id"),
@@ -119,16 +143,45 @@ public class UserDao {
         return null;
     }
 
-    // Required administrative update method.
-    public boolean updateUserRoleAndStatus(
-            int userId, String newRole, String newStatus)
+    // GET USER ID BY USERNAME
+    // REQUIRED FOR ACTIVITY LOGGING
+    public int getUserIdByUsername(String username)
             throws SQLException {
 
         String sql = """
-            UPDATE users
-            SET roles = ?, status = ?
-            WHERE id = ?
-            """;
+                SELECT id
+                FROM users
+                WHERE username = ?
+                """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, username);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    // UPDATE USER ROLE AND STATUS
+    public boolean updateUserRoleAndStatus(
+            int userId,
+            String newRole,
+            String newStatus
+    ) throws SQLException {
+
+        String sql = """
+                UPDATE users
+                SET roles = ?, status = ?
+                WHERE id = ?
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -141,46 +194,62 @@ public class UserDao {
         }
     }
 
-    public boolean activateUser(int userId) throws SQLException {
-        String sql = """
-            UPDATE users
-            SET status = 'ACTIVE'
-            WHERE id = ? AND UPPER(status) = 'PENDING'
-            """;
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, userId);
-            return ps.executeUpdate() > 0;
-        }
-    }
-
-    public boolean rejectUser(int userId) throws SQLException {
-        String sql = """
-            UPDATE users
-            SET status = 'REJECTED'
-            WHERE id = ? AND UPPER(status) = 'PENDING'
-            """;
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, userId);
-            return ps.executeUpdate() > 0;
-        }
-    }
-
-    // ==================== PATIENT OPERATIONS ====================
-
-    public boolean addPatient(String name, int age, String contact)
+    // ACTIVATE USER
+    public boolean activateUser(int userId)
             throws SQLException {
 
         String sql = """
-            INSERT INTO patients
-            (full_name, age, gender, contact, address)
-            VALUES (?, ?, ?, ?, ?)
-            """;
+                UPDATE users
+                SET status = 'ACTIVE'
+                WHERE id = ?
+                AND UPPER(status) = 'PENDING'
+                """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, userId);
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // REJECT USER
+    public boolean rejectUser(int userId)
+            throws SQLException {
+
+        String sql = """
+                UPDATE users
+                SET status = 'REJECTED'
+                WHERE id = ?
+                AND UPPER(status) = 'PENDING'
+                """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, userId);
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // ==========================================
+    // PATIENT OPERATIONS
+    // ==========================================
+
+    // ADD PATIENT
+    public boolean addPatient(
+            String name,
+            int age,
+            String contact
+    ) throws SQLException {
+
+        String sql = """
+                INSERT INTO patients
+                (full_name, age, gender, contact, address)
+                VALUES (?, ?, ?, ?, ?)
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -195,15 +264,20 @@ public class UserDao {
         }
     }
 
-    public boolean addPatient(String name, int age, String gender,
-                              String contact, String address)
-            throws SQLException {
+    // ADD PATIENT WITH COMPLETE DETAILS
+    public boolean addPatient(
+            String name,
+            int age,
+            String gender,
+            String contact,
+            String address
+    ) throws SQLException {
 
         String sql = """
-            INSERT INTO patients
-            (full_name, age, gender, contact, address)
-            VALUES (?, ?, ?, ?, ?)
-            """;
+                INSERT INTO patients
+                (full_name, age, gender, contact, address)
+                VALUES (?, ?, ?, ?, ?)
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -218,12 +292,14 @@ public class UserDao {
         }
     }
 
+    // VIEW PATIENTS
     public void viewPatients() throws SQLException {
+
         String sql = """
-            SELECT id, full_name, age, gender, contact, address
-            FROM patients
-            ORDER BY id
-            """;
+                SELECT id, full_name, age, gender, contact, address
+                FROM patients
+                ORDER BY id
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -232,6 +308,7 @@ public class UserDao {
             System.out.println("\n===== PATIENT LIST =====");
 
             while (rs.next()) {
+
                 System.out.println(
                         "ID: " + rs.getInt("id")
                                 + " | Name: " + rs.getString("full_name")
@@ -244,17 +321,23 @@ public class UserDao {
         }
     }
 
-    // ==================== APPOINTMENT OPERATIONS ====================
+    // ==========================================
+    // APPOINTMENT OPERATIONS
+    // ==========================================
 
-    public boolean addAppointment(int patientId, String date,
-                                  String time, String reason)
-            throws SQLException {
+    // ADD APPOINTMENT
+    public boolean addAppointment(
+            int patientId,
+            String date,
+            String time,
+            String reason
+    ) throws SQLException {
 
         String sql = """
-            INSERT INTO appointments
-            (patient_id, appointment_date, appointment_time, reason)
-            VALUES (?, ?, ?, ?)
-            """;
+                INSERT INTO appointments
+                (patient_id, appointment_date, appointment_time, reason)
+                VALUES (?, ?, ?, ?)
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -268,16 +351,21 @@ public class UserDao {
         }
     }
 
-    public boolean addAppointment(int patientId, int doctorId,
-                                  String date, String time, String reason)
-            throws SQLException {
+    // ADD APPOINTMENT WITH DOCTOR
+    public boolean addAppointment(
+            int patientId,
+            int doctorId,
+            String date,
+            String time,
+            String reason
+    ) throws SQLException {
 
         String sql = """
-            INSERT INTO appointments
-            (patient_id, doctor_id, appointment_date,
-             appointment_time, reason)
-            VALUES (?, ?, ?, ?, ?)
-            """;
+                INSERT INTO appointments
+                (patient_id, doctor_id, appointment_date,
+                 appointment_time, reason)
+                VALUES (?, ?, ?, ?, ?)
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -292,15 +380,17 @@ public class UserDao {
         }
     }
 
+    // VIEW APPOINTMENTS
     public void viewAppointments() throws SQLException {
+
         String sql = """
-            SELECT a.id, a.patient_id, p.full_name,
-                   a.doctor_id, a.appointment_date,
-                   a.appointment_time, a.reason, a.status
-            FROM appointments a
-            JOIN patients p ON a.patient_id = p.id
-            ORDER BY a.id
-            """;
+                SELECT a.id, a.patient_id, p.full_name,
+                       a.doctor_id, a.appointment_date,
+                       a.appointment_time, a.reason, a.status
+                FROM appointments a
+                JOIN patients p ON a.patient_id = p.id
+                ORDER BY a.id
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -309,6 +399,7 @@ public class UserDao {
             System.out.println("\n===== APPOINTMENT LIST =====");
 
             while (rs.next()) {
+
                 System.out.println(
                         "Appointment ID: " + rs.getInt("id")
                                 + " | Patient: " + rs.getString("full_name")
@@ -321,34 +412,43 @@ public class UserDao {
         }
     }
 
+    // COMPLETE APPOINTMENT
     public boolean completeAppointment(int appointmentId)
             throws SQLException {
 
         String sql = """
-            UPDATE appointments
-            SET status = 'COMPLETED'
-            WHERE id = ? AND status = 'SCHEDULED'
-            """;
+                UPDATE appointments
+                SET status = 'COMPLETED'
+                WHERE id = ?
+                AND status = 'SCHEDULED'
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, appointmentId);
+
             return ps.executeUpdate() > 0;
         }
     }
 
-    // ==================== PATIENT RECORD OPERATIONS ====================
+    // ==========================================
+    // PATIENT RECORD OPERATIONS
+    // ==========================================
 
-    public boolean addPatientRecord(int patientId, int doctorId,
-                                    String diagnosis, String treatment)
-            throws SQLException {
+    // ADD PATIENT RECORD
+    public boolean addPatientRecord(
+            int patientId,
+            int doctorId,
+            String diagnosis,
+            String treatment
+    ) throws SQLException {
 
         String sql = """
-            INSERT INTO patient_records
-            (patient_id, doctor_id, diagnosis, treatment)
-            VALUES (?, ?, ?, ?)
-            """;
+                INSERT INTO patient_records
+                (patient_id, doctor_id, diagnosis, treatment)
+                VALUES (?, ?, ?, ?)
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -362,18 +462,22 @@ public class UserDao {
         }
     }
 
-    public boolean addPatientRecord(int patientId, int doctorId,
-                                    int appointmentId,
-                                    String diagnosis, String treatment,
-                                    String notes)
-            throws SQLException {
+    // ADD PATIENT RECORD WITH APPOINTMENT AND NOTES
+    public boolean addPatientRecord(
+            int patientId,
+            int doctorId,
+            int appointmentId,
+            String diagnosis,
+            String treatment,
+            String notes
+    ) throws SQLException {
 
         String sql = """
-            INSERT INTO patient_records
-            (patient_id, doctor_id, appointment_id,
-             diagnosis, treatment, notes)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """;
+                INSERT INTO patient_records
+                (patient_id, doctor_id, appointment_id,
+                 diagnosis, treatment, notes)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -395,15 +499,18 @@ public class UserDao {
         }
     }
 
+    // VIEW PATIENT RECORDS
     public void viewPatientRecords() throws SQLException {
+
         String sql = """
-            SELECT r.id, r.patient_id, p.full_name,
-                   r.doctor_id, r.appointment_id,
-                   r.diagnosis, r.treatment, r.notes, r.created_at
-            FROM patient_records r
-            JOIN patients p ON r.patient_id = p.id
-            ORDER BY r.id
-            """;
+                SELECT r.id, r.patient_id, p.full_name,
+                       r.doctor_id, r.appointment_id,
+                       r.diagnosis, r.treatment,
+                       r.notes, r.created_at
+                FROM patient_records r
+                JOIN patients p ON r.patient_id = p.id
+                ORDER BY r.id
+                """;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -412,6 +519,7 @@ public class UserDao {
             System.out.println("\n===== PATIENT RECORDS =====");
 
             while (rs.next()) {
+
                 System.out.println(
                         "Record ID: " + rs.getInt("id")
                                 + " | Patient: " + rs.getString("full_name")

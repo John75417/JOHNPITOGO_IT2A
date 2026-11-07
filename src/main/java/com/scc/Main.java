@@ -2,7 +2,10 @@
 package com.scc;
 
 import com.scc.dao.DatabaseInitializer;
+import com.scc.dao.DatabaseConnection;
 import com.scc.dao.UserDao;
+import com.scc.dao.ActivityLogDao;
+
 import com.scc.ui.Authentication;
 import com.scc.ui.ClinicMenu;
 
@@ -14,33 +17,59 @@ public class Main {
     public static void main(String[] args) {
 
         try {
-            // Initialize database
+
+            // Initialize SQLite database
             DatabaseInitializer.initialize();
+
+            System.out.println(
+                    "SQLite database connected successfully!"
+            );
 
             // Create application objects
             Scanner scanner = new Scanner(System.in);
+
             UserDao userDao = new UserDao();
 
-            ClinicMenu clinicMenu =
-                    new ClinicMenu(scanner, userDao);
+            ActivityLogDao logDao =
+                    new ActivityLogDao();
 
+            // Create clinic menu
+            ClinicMenu clinicMenu = new ClinicMenu(
+                    scanner,
+                    userDao,
+                    logDao
+            );
+
+            // Create authentication
             Authentication authentication =
-                    new Authentication(userDao, scanner, clinicMenu);
+                    new Authentication(
+                            userDao,
+                            logDao,
+                            scanner,
+                            clinicMenu
+                    );
 
             // Start application
             authentication.start();
 
         } catch (SQLException e) {
 
-            System.out.println("\nUnable to start the application.");
-            System.out.println("Database error details:");
+            System.out.println(
+                    "\nUnable to start the application."
+            );
 
-            // Display exact error location
+            System.out.println(
+                    "Database error details:"
+            );
+
             e.printStackTrace();
 
         } catch (Exception e) {
 
-            System.out.println("\nUnexpected application error:");
+            System.out.println(
+                    "\nUnexpected application error:"
+            );
+
             e.printStackTrace();
         }
     }

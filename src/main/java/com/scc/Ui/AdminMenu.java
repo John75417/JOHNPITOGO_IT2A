@@ -1,36 +1,52 @@
+
 package com.scc.ui;
 
 import com.scc.dao.UserDao;
+import com.scc.dao.ActivityLogDao;
 import com.scc.model.User;
 
 import java.sql.SQLException;
 import java.util.Scanner;
 
 public class AdminMenu {
+
     private final UserDao userDao;
+    private final ActivityLogDao logDao;
+    private final ActivityLogMenu activityLogMenu;
     private final Scanner scanner;
 
-    public AdminMenu(UserDao userDao, Scanner scanner) {
+    public AdminMenu(
+            UserDao userDao,
+            ActivityLogDao logDao,
+            Scanner scanner
+    ) {
         this.userDao = userDao;
+        this.logDao = logDao;
         this.scanner = scanner;
+
+        this.activityLogMenu =
+                new ActivityLogMenu(logDao, scanner);
     }
 
     private int readIntInput(String prompt) {
+
         while (true) {
             System.out.print(prompt);
-            String input = scanner.nextLine().trim();
 
             try {
-                return Integer.parseInt(input);
+                return Integer.parseInt(
+                        scanner.nextLine().trim()
+                );
             } catch (NumberFormatException e) {
-                System.out.println(
-                        "Invalid input! Please enter numbers only.");
+                System.out.println("Enter numbers only.");
             }
         }
     }
 
     private String readValidRole() {
+
         while (true) {
+
             System.out.println("\nAvailable Roles:");
             System.out.println("1. ADMINISTRATOR");
             System.out.println("2. RECEPTIONIST");
@@ -38,11 +54,13 @@ public class AdminMenu {
             System.out.println("0. Cancel");
             System.out.print("Enter new role: ");
 
-            String role = scanner.nextLine().trim().toUpperCase();
-
-            if (role.equals("0")) return null;
+            String role = scanner.nextLine()
+                    .trim().toUpperCase();
 
             switch (role) {
+                case "0" -> {
+                    return null;
+                }
                 case "1", "ADMINISTRATOR" -> {
                     return "ADMINISTRATOR";
                 }
@@ -52,14 +70,16 @@ public class AdminMenu {
                 case "3", "DOCTOR" -> {
                     return "DOCTOR";
                 }
-                default -> System.out.println(
-                        "Invalid role! Please select a valid role.");
+                default ->
+                        System.out.println("Invalid role.");
             }
         }
     }
 
     private String readValidStatus() {
+
         while (true) {
+
             System.out.println("\nAvailable Statuses:");
             System.out.println("1. ACTIVE");
             System.out.println("2. PENDING");
@@ -67,11 +87,13 @@ public class AdminMenu {
             System.out.println("0. Cancel");
             System.out.print("Enter new status: ");
 
-            String status = scanner.nextLine().trim().toUpperCase();
-
-            if (status.equals("0")) return null;
+            String status = scanner.nextLine()
+                    .trim().toUpperCase();
 
             switch (status) {
+                case "0" -> {
+                    return null;
+                }
                 case "1", "ACTIVE" -> {
                     return "ACTIVE";
                 }
@@ -81,33 +103,34 @@ public class AdminMenu {
                 case "3", "REJECTED" -> {
                     return "REJECTED";
                 }
-                default -> System.out.println(
-                        "Invalid status! Please select a valid status.");
+                default ->
+                        System.out.println("Invalid status.");
             }
         }
     }
 
-    public void updateUser(User currentAdmin) throws SQLException {
-        System.out.println("\n===== UPDATE USER ROLE AND STATUS =====");
+    public void updateUser(User currentAdmin)
+            throws SQLException {
+
+        System.out.println(
+                "\n===== UPDATE USER ROLE AND STATUS ====="
+        );
 
         userDao.viewUsers();
 
         int targetUserId = readIntInput(
-                "\nEnter User ID to update (0 to cancel): ");
+                "\nEnter User ID to update (0 to cancel): "
+        );
 
-        if (targetUserId == 0) {
+        if (targetUserId <= 0) {
             System.out.println("Update cancelled.");
-            return;
-        }
-
-        if (targetUserId < 0) {
-            System.out.println("Invalid User ID. Update cancelled.");
             return;
         }
 
         if (targetUserId == currentAdmin.getId()) {
             System.out.println(
-                    "WARNING: Modifying the currently active admin account is restricted.");
+                    "Modifying your own administrator account is restricted."
+            );
             return;
         }
 
@@ -117,12 +140,6 @@ public class AdminMenu {
             System.out.println("User ID not found.");
             return;
         }
-
-        System.out.println("\nSelected User:");
-        System.out.println("ID: " + targetUser.getId());
-        System.out.println("Username: " + targetUser.getUsername());
-        System.out.println("Current Role: " + targetUser.getRoles());
-        System.out.println("Current Status: " + targetUser.getStatus());
 
         String newRole = readValidRole();
 
@@ -139,19 +156,36 @@ public class AdminMenu {
         }
 
         boolean updated = userDao.updateUserRoleAndStatus(
-                targetUserId, newRole, newStatus);
+                targetUserId,
+                newRole,
+                newStatus
+        );
 
         if (updated) {
+
+            logDao.logAction(
+                    currentAdmin.getId(),
+                    "USER_UPDATED",
+                    "Admin " + currentAdmin.getId()
+                            + " updated User " + targetUserId
+                            + " role to " + newRole
+                            + " and status to " + newStatus
+            );
+
             System.out.println("\nUser updated successfully!");
-            System.out.println("Updated User ID: " + targetUserId);
+
+            System.out.println("User ID: " + targetUserId);
             System.out.println("New Role: " + newRole);
             System.out.println("New Status: " + newStatus);
+
         } else {
-            System.out.println(
-                    "Failed to update user. User may no longer exist.");
+            System.out.println("Failed to update user.");
         }
 
-        System.out.println("\nUpdated User List:");
         userDao.viewUsers();
+    }
+
+    public void viewAuditLogs() throws SQLException {
+        activityLogMenu.start();
     }
 }

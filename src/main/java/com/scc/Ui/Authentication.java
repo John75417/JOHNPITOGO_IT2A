@@ -1,28 +1,41 @@
+
 package com.scc.ui;
 
 import com.scc.dao.UserDao;
+import com.scc.dao.ActivityLogDao;
 import com.scc.model.User;
 
 import java.sql.SQLException;
 import java.util.Scanner;
 
 public class Authentication {
+
     private final UserDao userDao;
+    private final ActivityLogDao logDao;
     private final Scanner scanner;
     private final ClinicMenu clinicMenu;
 
-    public Authentication(UserDao userDao, Scanner scanner,
-                          ClinicMenu clinicMenu) {
+    public Authentication(
+            UserDao userDao,
+            ActivityLogDao logDao,
+            Scanner scanner,
+            ClinicMenu clinicMenu
+    ) {
         this.userDao = userDao;
+        this.logDao = logDao;
         this.scanner = scanner;
         this.clinicMenu = clinicMenu;
     }
 
     public void start() {
+
         boolean running = true;
 
         while (running) {
-            System.out.println("\n===== CLINIC APPOINTMENT SYSTEM =====");
+
+            System.out.println(
+                    "\n===== CLINIC APPOINTMENT SYSTEM ====="
+            );
             System.out.println("1. Login");
             System.out.println("2. Register");
             System.out.println("3. Exit");
@@ -32,21 +45,30 @@ public class Authentication {
 
             try {
                 switch (choice) {
+
                     case "1" -> login();
+
                     case "2" -> register();
+
                     case "3" -> {
                         running = false;
                         System.out.println("Goodbye!");
                     }
-                    default -> System.out.println("Invalid choice.");
+
+                    default ->
+                            System.out.println("Invalid choice.");
                 }
+
             } catch (SQLException e) {
-                System.out.println("Database error: " + e.getMessage());
+                System.out.println(
+                        "Database error: " + e.getMessage()
+                );
             }
         }
     }
 
     private void register() throws SQLException {
+
         System.out.println("\n===== REGISTER ACCOUNT =====");
 
         System.out.print("Username: ");
@@ -56,7 +78,9 @@ public class Authentication {
         String password = scanner.nextLine();
 
         if (username.isEmpty() || password.isEmpty()) {
-            System.out.println("Username and password are required.");
+            System.out.println(
+                    "Username and password are required."
+            );
             return;
         }
 
@@ -74,30 +98,38 @@ public class Authentication {
             case "1" -> role = "ADMINISTRATOR";
             case "2" -> role = "RECEPTIONIST";
             case "3" -> role = "DOCTOR";
+
             default -> {
                 System.out.println("Invalid role selection.");
                 return;
             }
         }
 
-        try {
-            if (userDao.register(username, password, role)) {
-                System.out.println("Registration successful!");
-                System.out.println("Selected role: " + role);
-                System.out.println("Account status: PENDING");
-                System.out.println("Wait for Administrator activation.");
+        if (userDao.register(username, password, role)) {
+
+            int newUserId =
+                    userDao.getUserIdByUsername(username);
+
+            if (newUserId > 0) {
+                logDao.logAction(
+                        newUserId,
+                        "USER_REGISTERED",
+                        "New account registered: " + username
+                                + " with role " + role
+                );
             }
-        } catch (SQLException e) {
-            if (e.getMessage() != null &&
-                    e.getMessage().toLowerCase().contains("unique")) {
-                System.out.println("Username already exists.");
-            } else {
-                throw e;
-            }
+
+            System.out.println("Registration successful!");
+            System.out.println("Selected role: " + role);
+            System.out.println("Account status: PENDING");
+            System.out.println(
+                    "Wait for Administrator activation."
+            );
         }
     }
 
     private void login() throws SQLException {
+
         System.out.println("\n===== LOGIN =====");
 
         System.out.print("Username: ");
@@ -110,8 +142,11 @@ public class Authentication {
 
         if (user == null) {
             System.out.println(
-                    "Login failed. Check your credentials and account status.");
-            System.out.println("Only ACTIVE accounts can log in.");
+                    "Login failed. Check your credentials and account status."
+            );
+            System.out.println(
+                    "Only ACTIVE accounts can log in."
+            );
             return;
         }
 

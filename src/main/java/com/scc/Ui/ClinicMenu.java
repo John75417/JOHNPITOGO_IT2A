@@ -1,35 +1,53 @@
+
 package com.scc.ui;
 
 import com.scc.dao.UserDao;
+import com.scc.dao.ActivityLogDao;
 import com.scc.model.User;
 
 import java.sql.SQLException;
 import java.util.Scanner;
 
 public class ClinicMenu {
+
     private final Scanner scanner;
     private final UserDao userDao;
+    private final ActivityLogDao logDao;
     private final AdminMenu adminMenu;
 
-    public ClinicMenu(Scanner scanner, UserDao userDao) {
+    public ClinicMenu(
+            Scanner scanner,
+            UserDao userDao,
+            ActivityLogDao logDao
+    ) {
         this.scanner = scanner;
         this.userDao = userDao;
-        this.adminMenu = new AdminMenu(userDao, scanner);
+        this.logDao = logDao;
+
+        this.adminMenu = new AdminMenu(
+                userDao, logDao, scanner
+        );
     }
 
     public void start(User user) throws SQLException {
+
         boolean running = true;
 
         while (running) {
+
             String role = user.getRoles().toUpperCase();
 
             switch (role) {
+
                 case "ADMINISTRATOR" ->
                         running = showAdministratorMenu(user);
+
                 case "RECEPTIONIST" ->
-                        running = showReceptionistMenu();
+                        running = showReceptionistMenu(user);
+
                 case "DOCTOR" ->
                         running = showDoctorMenu(user);
+
                 default -> {
                     System.out.println("Unknown role.");
                     running = false;
@@ -49,61 +67,71 @@ public class ClinicMenu {
         System.out.println("5. View Appointments");
         System.out.println("6. View Patient Records");
         System.out.println("7. Update User Role and Status");
-        System.out.println("8. Logout");
+        System.out.println("8. View System Audit Logs");
+        System.out.println("9. Logout");
         System.out.print("Enter choice: ");
 
         String choice = scanner.nextLine().trim();
 
         switch (choice) {
+
             case "1" -> userDao.viewUsers();
 
             case "2" -> {
                 userDao.viewUsers();
 
-                System.out.print(
-                        "Enter User ID to activate (0 to cancel): ");
+                int id = readId(
+                        "Enter User ID to activate (0 to cancel): "
+                );
 
-                try {
-                    int id = Integer.parseInt(
-                            scanner.nextLine().trim());
+                if (id == 0) {
+                    System.out.println("Action cancelled.");
+                } else if (userDao.activateUser(id)) {
 
-                    if (id == 0) {
-                        System.out.println("Action cancelled.");
-                    } else if (userDao.activateUser(id)) {
-                        System.out.println(
-                                "User activated successfully!");
-                    } else {
-                        System.out.println(
-                                "User not found or account is not PENDING.");
-                    }
-                } catch (NumberFormatException e) {
+                    logDao.logAction(
+                            currentAdmin.getId(),
+                            "USER_APPROVED",
+                            "Admin " + currentAdmin.getId()
+                                    + " approved account for User ID " + id
+                    );
+
                     System.out.println(
-                            "Please enter a valid numeric ID.");
+                            "User activated successfully!"
+                    );
+
+                } else {
+                    System.out.println(
+                            "User not found or account is not PENDING."
+                    );
                 }
             }
 
             case "3" -> {
                 userDao.viewUsers();
 
-                System.out.print(
-                        "Enter User ID to reject (0 to cancel): ");
+                int id = readId(
+                        "Enter User ID to reject (0 to cancel): "
+                );
 
-                try {
-                    int id = Integer.parseInt(
-                            scanner.nextLine().trim());
+                if (id == 0) {
+                    System.out.println("Action cancelled.");
+                } else if (userDao.rejectUser(id)) {
 
-                    if (id == 0) {
-                        System.out.println("Action cancelled.");
-                    } else if (userDao.rejectUser(id)) {
-                        System.out.println(
-                                "User rejected successfully!");
-                    } else {
-                        System.out.println(
-                                "User not found or account is not PENDING.");
-                    }
-                } catch (NumberFormatException e) {
+                    logDao.logAction(
+                            currentAdmin.getId(),
+                            "USER_REJECTED",
+                            "Admin " + currentAdmin.getId()
+                                    + " rejected User ID " + id
+                    );
+
                     System.out.println(
-                            "Please enter a valid numeric ID.");
+                            "User rejected successfully!"
+                    );
+
+                } else {
+                    System.out.println(
+                            "User not found or account is not PENDING."
+                    );
                 }
             }
 
@@ -115,7 +143,9 @@ public class ClinicMenu {
 
             case "7" -> adminMenu.updateUser(currentAdmin);
 
-            case "8" -> {
+            case "8" -> adminMenu.viewAuditLogs();
+
+            case "9" -> {
                 System.out.println("Logged out.");
                 return false;
             }
@@ -126,7 +156,9 @@ public class ClinicMenu {
         return true;
     }
 
-    private boolean showReceptionistMenu() throws SQLException {
+    private boolean showReceptionistMenu(User currentUser)
+            throws SQLException {
+
         System.out.println("\n===== RECEPTIONIST MENU =====");
         System.out.println("1. Add Patient");
         System.out.println("2. View Patients");
@@ -138,81 +170,95 @@ public class ClinicMenu {
         String choice = scanner.nextLine().trim();
 
         switch (choice) {
+
             case "1" -> {
+
                 System.out.print("Patient name: ");
                 String name = scanner.nextLine().trim();
 
                 if (name.isEmpty()) {
-                    System.out.println(
-                            "Patient name is required.");
+                    System.out.println("Patient name is required.");
                     break;
                 }
 
-                System.out.print("Patient age: ");
+                int age = readId("Patient age: ");
 
-                try {
-                    int age = Integer.parseInt(
-                            scanner.nextLine().trim());
+                if (age <= 0) {
+                    System.out.println("Invalid age.");
+                    break;
+                }
 
-                    if (age <= 0) {
-                        System.out.println(
-                                "Age must be greater than zero.");
-                        break;
-                    }
+                System.out.print("Patient contact number: ");
+                String contact = scanner.nextLine().trim();
 
-                    System.out.print("Patient contact number: ");
-                    String contact = scanner.nextLine().trim();
+                if (contact.isEmpty()) {
+                    System.out.println("Contact is required.");
+                    break;
+                }
 
-                    userDao.addPatient(name, age, contact);
+                if (userDao.addPatient(name, age, contact)) {
 
-                } catch (NumberFormatException e) {
-                    System.out.println("Please enter a valid age.");
+                    logDao.logAction(
+                            currentUser.getId(),
+                            "PATIENT_ADDED",
+                            "Receptionist "
+                                    + currentUser.getId()
+                                    + " added patient " + name
+                    );
+
+                    System.out.println("Patient added successfully!");
                 }
             }
 
             case "2" -> userDao.viewPatients();
 
             case "3" -> {
-                System.out.print("Patient ID (0 to cancel): ");
 
-                try {
-                    int patientId = Integer.parseInt(
-                            scanner.nextLine().trim());
+                int patientId = readId(
+                        "Patient ID (0 to cancel): "
+                );
 
-                    if (patientId == 0) {
-                        System.out.println("Action cancelled.");
-                        break;
-                    }
+                if (patientId <= 0) {
+                    System.out.println("Action cancelled.");
+                    break;
+                }
 
-                    if (patientId < 0) {
-                        System.out.println("Invalid patient ID.");
-                        break;
-                    }
+                System.out.print(
+                        "Appointment date (YYYY-MM-DD): "
+                );
+                String date = scanner.nextLine().trim();
 
-                    System.out.print(
-                            "Appointment date (YYYY-MM-DD): ");
-                    String date = scanner.nextLine().trim();
+                System.out.print(
+                        "Appointment time (HH:MM): "
+                );
+                String time = scanner.nextLine().trim();
 
-                    System.out.print(
-                            "Appointment time (HH:MM): ");
-                    String time = scanner.nextLine().trim();
+                System.out.print("Reason: ");
+                String reason = scanner.nextLine().trim();
 
-                    System.out.print("Reason for appointment: ");
-                    String reason = scanner.nextLine().trim();
+                if (date.isEmpty() ||
+                        time.isEmpty() ||
+                        reason.isEmpty()) {
 
-                    if (date.isEmpty() || time.isEmpty()
-                            || reason.isEmpty()) {
-                        System.out.println(
-                                "Date, time, and reason are required.");
-                        break;
-                    }
+                    System.out.println("All fields are required.");
+                    break;
+                }
 
-                    userDao.addAppointment(
-                            patientId, date, time, reason);
+                if (userDao.addAppointment(
+                        patientId, date, time, reason)) {
 
-                } catch (NumberFormatException e) {
+                    logDao.logAction(
+                            currentUser.getId(),
+                            "APPOINTMENT_ADDED",
+                            "Receptionist "
+                                    + currentUser.getId()
+                                    + " created appointment for Patient "
+                                    + patientId
+                    );
+
                     System.out.println(
-                            "Please enter a valid patient ID.");
+                            "Appointment added successfully!"
+                    );
                 }
             }
 
@@ -244,79 +290,88 @@ public class ClinicMenu {
         String choice = scanner.nextLine().trim();
 
         switch (choice) {
+
             case "1" -> userDao.viewAppointments();
 
             case "2" -> userDao.viewPatients();
 
             case "3" -> {
-                System.out.print("Patient ID (0 to cancel): ");
 
-                try {
-                    int patientId = Integer.parseInt(
-                            scanner.nextLine().trim());
+                int patientId = readId(
+                        "Patient ID (0 to cancel): "
+                );
 
-                    if (patientId == 0) {
-                        System.out.println("Action cancelled.");
-                        break;
-                    }
+                if (patientId <= 0) {
+                    System.out.println("Action cancelled.");
+                    break;
+                }
 
-                    if (patientId < 0) {
-                        System.out.println("Invalid patient ID.");
-                        break;
-                    }
+                System.out.print("Diagnosis: ");
+                String diagnosis = scanner.nextLine().trim();
 
-                    System.out.print("Diagnosis: ");
-                    String diagnosis = scanner.nextLine().trim();
+                System.out.print("Treatment: ");
+                String treatment = scanner.nextLine().trim();
 
-                    System.out.print("Treatment: ");
-                    String treatment = scanner.nextLine().trim();
+                if (diagnosis.isEmpty() ||
+                        treatment.isEmpty()) {
 
-                    if (diagnosis.isEmpty()
-                            || treatment.isEmpty()) {
-                        System.out.println(
-                                "Diagnosis and treatment are required.");
-                        break;
-                    }
+                    System.out.println(
+                            "Diagnosis and treatment are required."
+                    );
+                    break;
+                }
 
-                    userDao.addPatientRecord(
-                            patientId,
+                if (userDao.addPatientRecord(
+                        patientId,
+                        currentDoctor.getId(),
+                        diagnosis,
+                        treatment)) {
+
+                    logDao.logAction(
                             currentDoctor.getId(),
-                            diagnosis,
-                            treatment
+                            "RECORD_ADDED",
+                            "Doctor " + currentDoctor.getId()
+                                    + " added patient record for Patient "
+                                    + patientId
                     );
 
-                } catch (NumberFormatException e) {
                     System.out.println(
-                            "Please enter a valid patient ID.");
+                            "Patient record added successfully!"
+                    );
                 }
             }
 
             case "4" -> userDao.viewPatientRecords();
 
             case "5" -> {
-                System.out.print(
-                        "Appointment ID (0 to cancel): ");
 
-                try {
-                    int appointmentId = Integer.parseInt(
-                            scanner.nextLine().trim());
+                int appointmentId = readId(
+                        "Appointment ID (0 to cancel): "
+                );
 
-                    if (appointmentId == 0) {
-                        System.out.println("Action cancelled.");
-                        break;
-                    }
+                if (appointmentId <= 0) {
+                    System.out.println("Action cancelled.");
+                    break;
+                }
 
-                    if (userDao.completeAppointment(appointmentId)) {
-                        System.out.println(
-                                "Appointment marked as completed.");
-                    } else {
-                        System.out.println(
-                                "Appointment not found or not scheduled.");
-                    }
+                if (userDao.completeAppointment(appointmentId)) {
 
-                } catch (NumberFormatException e) {
+                    logDao.logAction(
+                            currentDoctor.getId(),
+                            "APPOINTMENT_COMPLETED",
+                            "Doctor " + currentDoctor.getId()
+                                    + " completed Appointment "
+                                    + appointmentId
+                    );
+
                     System.out.println(
-                            "Please enter a valid appointment ID.");
+                            "Appointment marked as completed."
+                    );
+
+                } else {
+                    System.out.println(
+                            "Appointment not found or not scheduled."
+                    );
                 }
             }
 
@@ -329,5 +384,24 @@ public class ClinicMenu {
         }
 
         return true;
+    }
+
+    private int readId(String prompt) {
+
+        while (true) {
+
+            System.out.print(prompt);
+
+            try {
+                return Integer.parseInt(
+                        scanner.nextLine().trim()
+                );
+
+            } catch (NumberFormatException e) {
+                System.out.println(
+                        "Please enter a valid number."
+                );
+            }
+        }
     }
 }
