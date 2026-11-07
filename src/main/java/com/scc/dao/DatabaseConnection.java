@@ -1,4 +1,3 @@
-
 package com.scc.dao;
 
 import java.sql.Connection;
@@ -7,7 +6,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class DatabaseConnection {
-
     private static final String URL = "jdbc:sqlite:clinic.db";
 
     public static Connection getConnection() throws SQLException {

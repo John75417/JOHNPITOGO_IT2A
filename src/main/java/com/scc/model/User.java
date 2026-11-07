@@ -1,8 +1,6 @@
-
 package com.scc.model;
 
 public class User {
-
     private final int id;
     private final String username;
     private final String password;

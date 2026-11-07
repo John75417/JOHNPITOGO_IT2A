@@ -12,9 +12,12 @@ import java.util.Scanner;
 public class Main {
 
     public static void main(String[] args) {
+
         try {
+            // Initialize database
             DatabaseInitializer.initialize();
 
+            // Create application objects
             Scanner scanner = new Scanner(System.in);
             UserDao userDao = new UserDao();
 
@@ -24,11 +27,21 @@ public class Main {
             Authentication authentication =
                     new Authentication(userDao, scanner, clinicMenu);
 
+            // Start application
             authentication.start();
 
         } catch (SQLException e) {
-            System.out.println("Unable to start the application.");
-            System.out.println("Database error: " + e.getMessage());
+
+            System.out.println("\nUnable to start the application.");
+            System.out.println("Database error details:");
+
+            // Display exact error location
+            e.printStackTrace();
+
+        } catch (Exception e) {
+
+            System.out.println("\nUnexpected application error:");
+            e.printStackTrace();
         }
     }
 }

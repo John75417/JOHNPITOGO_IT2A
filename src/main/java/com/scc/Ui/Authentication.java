@@ -1,4 +1,3 @@
-
 package com.scc.ui;
 
 import com.scc.dao.UserDao;
@@ -8,7 +7,6 @@ import java.sql.SQLException;
 import java.util.Scanner;
 
 public class Authentication {
-
     private final UserDao userDao;
     private final Scanner scanner;
     private final ClinicMenu clinicMenu;
@@ -34,18 +32,13 @@ public class Authentication {
 
             try {
                 switch (choice) {
-                    case "1":
-                        login();
-                        break;
-                    case "2":
-                        register();
-                        break;
-                    case "3":
+                    case "1" -> login();
+                    case "2" -> register();
+                    case "3" -> {
                         running = false;
                         System.out.println("Goodbye!");
-                        break;
-                    default:
-                        System.out.println("Invalid choice.");
+                    }
+                    default -> System.out.println("Invalid choice.");
                 }
             } catch (SQLException e) {
                 System.out.println("Database error: " + e.getMessage());
@@ -62,6 +55,11 @@ public class Authentication {
         System.out.print("Password: ");
         String password = scanner.nextLine();
 
+        if (username.isEmpty() || password.isEmpty()) {
+            System.out.println("Username and password are required.");
+            return;
+        }
+
         System.out.println("\nSelect Role:");
         System.out.println("1. Administrator");
         System.out.println("2. Receptionist");
@@ -69,32 +67,21 @@ public class Authentication {
         System.out.print("Choose role: ");
 
         String choice = scanner.nextLine().trim();
+
         String role;
 
         switch (choice) {
-            case "1":
-                role = "Administrator";
-                break;
-            case "2":
-                role = "Receptionist";
-                break;
-            case "3":
-                role = "Doctor";
-                break;
-            default:
+            case "1" -> role = "ADMINISTRATOR";
+            case "2" -> role = "RECEPTIONIST";
+            case "3" -> role = "DOCTOR";
+            default -> {
                 System.out.println("Invalid role selection.");
                 return;
-        }
-
-        if (username.isEmpty() || password.isEmpty()) {
-            System.out.println("Username and password are required.");
-            return;
+            }
         }
 
         try {
-            boolean success = userDao.register(username, password, role);
-
-            if (success) {
+            if (userDao.register(username, password, role)) {
                 System.out.println("Registration successful!");
                 System.out.println("Selected role: " + role);
                 System.out.println("Account status: PENDING");
@@ -123,8 +110,7 @@ public class Authentication {
 
         if (user == null) {
             System.out.println(
-                    "Login failed. Check your credentials and account status."
-            );
+                    "Login failed. Check your credentials and account status.");
             System.out.println("Only ACTIVE accounts can log in.");
             return;
         }
